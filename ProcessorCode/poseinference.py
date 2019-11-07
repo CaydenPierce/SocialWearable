@@ -10,10 +10,12 @@ import PoseEstimationLib.pose.models as models
 from scipy.ndimage import gaussian_filter, maximum_filter
 import cv2
 import numpy as np
+import math
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
+
 
 def load_image(img, w, h):
     image = cv2.resize(img, (w, h))
@@ -23,6 +25,7 @@ def load_image(img, w, h):
     image = image.transpose((2, 0, 1))  # Change data layout from HWC to CHW
     image = image[np.newaxis, :, :, :]
     return image
+
 
 def load_model(arch, stacks, blocks, num_classes, mobile, checkpoint_resume):
     # create model
@@ -47,6 +50,7 @@ def load_model(arch, stacks, blocks, num_classes, mobile, checkpoint_resume):
     print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters())/1000000.0))
     model.eval()
     return model
+
 
 def inference(model, image, device):
     input_tensor = torch.from_numpy(image).float().to(device)
@@ -81,13 +85,105 @@ def non_max_supression(plain, windowSize=3, threshold=1e-6):
     plain[under_th_indices] = 0
     return plain * (plain == maximum_filter(plain, footprint=np.ones((windowSize, windowSize))))
 
-def render_kps(cvmat, kps, scale_x, scale_y):
+
+def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist, cvmat, xScale, yScale):
+
+    shoulderInfo = [abs(rightShoulder[0] - leftShoulder[0]), rightShoulder, leftShoulder]
+    torsoInfo = [abs(neck[0] - waist[0]), neck, waist]
+
+    xThreshold = .5
+    yThreshold = .5
+
+    startShoulder = None
+    endShoulder = None
+    shoulderLength = shoulderInfo[0]
+
+    topTorso = neck[1]
+    bottomTorso = waist[1]
+    torsoLength = torsoInfo[0]
+
+    #ensure startShoulder is the smallest and endShoulder is the largest
+    if (shoulderInfo[1] < shoulderInfo[2]):
+        startShoulder = shoulderInfo[1][0]
+        endShoulder = shoulderInfo[2][0]
+    else:
+        startShoulder = shoulderInfo[2][0]
+        endShoulder = shoulderInfo[1][0]
+
+    startRange = startShoulder + (shoulderLength / 2) - (shoulderLength * xThreshold)
+    endRange = startShoulder + (shoulderLength / 2) + (shoulderLength * xThreshold)
+
+    startRange2 = topTorso - (torsoLength * yThreshold)
+    endRange2 = topTorso + (torsoLength * yThreshold)
+    
+    cv2.rectangle(cvmat, (int(startRange* xScale) , int(endRange*yScale)), (int(startRange2*xScale), int(endRange2*yScale)), (255,0,0), 2)
+
+
+    if right:
+	if ((right[0] < endRange) and (right[0] > startRange)):
+		if ((right[1] < endRange2) and (right[1] > startRange2)):
+			return True, startShoulder + shoulderLength/2, endRange2
+
+    if left:
+	if ((left[0] < endRange) and (left[0] > startRange)):
+		if ((left[1] < endRange2) and (left[1] > startRange2)):
+			return True, startShoulder + shoulderLength/2, endRange2
+
+    return False, 10, 10
+
+
+
+def checkForActions(cvmat, kps, scale_x, scale_y):
+    _index = 0
+    leftHand = None
+    rightHand = None
+    rightShoulder = None
+    leftShoulder = None
+    neck = None
+    topOfHead = None
+    notch = None
+    waist = None
+
     for _kp in kps:
+        _index = _index + 1
         _x, _y, _conf = _kp
         if _conf > 0.2:
-            cv2.circle(cvmat, center=(int(_x*4*scale_x), int(_y*4*scale_y)), color=(0,0,255), radius=5)
+            # cv2.circle(cvmat, center=(int(_x * 4 * scale_x), int(_y * 4 * scale_y)), color=(0, 0, 255), radius=5)
+            # cv2.putText(cvmat, str(_index), (_x, _y), cv2.CV_FONT_HERSHEY_SIMPLEX, 2, 255)
+            if(_index == 11): rightHand = [_x, _y]
+            elif(_index == 16): leftHand = [_x, _y]
+            elif(_index == 10): topOfHead = [_x, _y]
+            elif(_index == 9): neck = [_x, _y]
+            elif(_index == 8): notch = [_x, _y]
+            elif(_index == 13): rightShoulder = [_x, _y]
+            elif(_index == 14): leftShoulder = [_x, _y]
+            elif(_index == 7): waist = [_x, _y]
 
-    return cvmat
+    if ((rightHand or leftHand) and neck and leftShoulder and rightShoulder and waist):
+	print("gang")
+        triggered, x, y = neckTouch(rightHand, leftHand, neck, rightShoulder, leftShoulder, waist, cvmat, 4 * scale_x, 4 * scale_y)
+        if triggered:
+		print('triggered')
+		cv2.putText(cvmat, "<3", (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+		return cvmat, True
+
+    # print(TOuched my heart <3)
+
+    return cvmat, False
+
+
+def render_kps(cvmat, kps, scale_x, scale_y):
+    _index = 0
+
+    for _kp in kps:
+        _index = _index + 1
+        _x, _y, _conf = _kp
+        if _conf > 0.2 or (_index == 10 and _conf > 0.15):
+            cv2.circle(cvmat, center=(int(_x*4*scale_x), int(_y*4*scale_y)), color=(0,0,255), radius=5)
+            # cv2.putText(cvmat, str(_index), (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+
+    return checkForActions(cvmat, kps, scale_x, scale_y)
+
 
 def loadModel(args):
     # load checkpoint
@@ -104,11 +200,13 @@ def main(args, model, in_res_h, in_res_w, image, frame):
     cvmat = frame
     scale_x = cvmat.shape[1]*1.0/in_res_w
     scale_y = cvmat.shape[0]*1.0/in_res_h
-    render_kps(cvmat, kps, scale_x, scale_y)
+    blah, neck = render_kps(cvmat, kps, scale_x, scale_y)
 
     cv2.imshow('x', cvmat)
     #cv2.imshow('Frame', frame)
     c = cv2.waitKey(10)
+
+    return neck
 
 if __name__ == '__main__':
     import argparse
@@ -140,5 +238,5 @@ if __name__ == '__main__':
     timeCurr = time.time()
     while True:
         main(parser.parse_args(), model, in_res_h, in_res_w)
-        print("Time taken for one image: {}\r".format(time.time() - timeCurr))
+        #print("Time taken for one image: {}\r".format(time.time() - timeCurr))
         timeCurr = time.time()
