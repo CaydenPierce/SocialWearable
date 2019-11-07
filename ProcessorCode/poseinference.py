@@ -86,13 +86,13 @@ def non_max_supression(plain, windowSize=3, threshold=1e-6):
     return plain * (plain == maximum_filter(plain, footprint=np.ones((windowSize, windowSize))))
 
 
-def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist):
+def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist, cvmat, xScale, yScale):
 
     shoulderInfo = [abs(rightShoulder[0] - leftShoulder[0]), rightShoulder, leftShoulder]
     torsoInfo = [abs(neck[0] - waist[0]), neck, waist]
 
-    xThreshold = .17
-    yThreshold = .1
+    xThreshold = .5
+    yThreshold = .5
 
     startShoulder = None
     endShoulder = None
@@ -104,27 +104,32 @@ def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist):
 
     #ensure startShoulder is the smallest and endShoulder is the largest
     if (shoulderInfo[1] < shoulderInfo[2]):
-        startShoulder = shoulderInfo[1]
-        endShoulder = shoulderInfo[2]
+        startShoulder = shoulderInfo[1][0]
+        endShoulder = shoulderInfo[2][0]
     else:
-        startShoulder = shoulderInfo[2]
-        endShoulder = shoulderInfo[1]
+        startShoulder = shoulderInfo[2][0]
+        endShoulder = shoulderInfo[1][0]
 
-    startRange = startShoulder + shoulderLength/2 - shoulderLength*xThreshold
-    endRange = startShoulder + shoulderLength/2 + shoulderLength*xThreshold
+    startRange = startShoulder + (shoulderLength / 2) - (shoulderLength * xThreshold)
+    endRange = startShoulder + (shoulderLength / 2) + (shoulderLength * xThreshold)
 
-    startRange2 = topTorso - torsoLength * yThreshold
-    endRange2 = topTorso + torsoLength * yThreshold
+    startRange2 = topTorso - (torsoLength * yThreshold)
+    endRange2 = topTorso + (torsoLength * yThreshold)
+    
+    cv2.rectangle(cvmat, (int(startRange* xScale) , int(endRange*yScale)), (int(startRange2*xScale), int(endRange2*yScale)), (255,0,0), 2)
 
-    if ((right[0] < endRange) and (right[0] > startRange)):
-        if ((right[1] < endRange2) and (right[1] > startRange2)):
-            return True, startShoulder + shoulderLength/2, endRange2
 
-    if ((left[0] < endRange) and (left[0] > startRange)):
-        if ((left[1] < endRange2) and (left[1] > startRange2)):
-            return True, startShoulder + shoulderLength/2, endRange2
+    if right:
+	if ((right[0] < endRange) and (right[0] > startRange)):
+		if ((right[1] < endRange2) and (right[1] > startRange2)):
+			return True, startShoulder + shoulderLength/2, endRange2
 
-    return False
+    if left:
+	if ((left[0] < endRange) and (left[0] > startRange)):
+		if ((left[1] < endRange2) and (left[1] > startRange2)):
+			return True, startShoulder + shoulderLength/2, endRange2
+
+    return False, 10, 10
 
 
 
@@ -151,19 +156,20 @@ def checkForActions(cvmat, kps, scale_x, scale_y):
             elif(_index == 9): neck = [_x, _y]
             elif(_index == 8): notch = [_x, _y]
             elif(_index == 13): rightShoulder = [_x, _y]
-            elif(_index == 13): leftShoulder = [_x, _y]
+            elif(_index == 14): leftShoulder = [_x, _y]
             elif(_index == 7): waist = [_x, _y]
 
-    hand = rightHand if rightHand else leftHand
-
-    if (rightHand or leftHand) and neck and leftShoulder and rightShoulder and waist:
-        triggered, x, y = neckTouch(rightHand, leftHand, neck, rightShoulder, leftShoulder, waist)
+    if ((rightHand or leftHand) and neck and leftShoulder and rightShoulder and waist):
+	print("gang")
+        triggered, x, y = neckTouch(rightHand, leftHand, neck, rightShoulder, leftShoulder, waist, cvmat, 4 * scale_x, 4 * scale_y)
         if triggered:
-            cv2.putText(cvmat, "<3", (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+		print('triggered')
+		cv2.putText(cvmat, "<3", (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+		return cvmat, True
 
     # print(TOuched my heart <3)
 
-    return cvmat
+    return cvmat, False
 
 
 def render_kps(cvmat, kps, scale_x, scale_y):
@@ -194,11 +200,13 @@ def main(args, model, in_res_h, in_res_w, image, frame):
     cvmat = frame
     scale_x = cvmat.shape[1]*1.0/in_res_w
     scale_y = cvmat.shape[0]*1.0/in_res_h
-    render_kps(cvmat, kps, scale_x, scale_y)
+    blah, neck = render_kps(cvmat, kps, scale_x, scale_y)
 
     cv2.imshow('x', cvmat)
     #cv2.imshow('Frame', frame)
     c = cv2.waitKey(10)
+
+    return neck
 
 if __name__ == '__main__':
     import argparse
