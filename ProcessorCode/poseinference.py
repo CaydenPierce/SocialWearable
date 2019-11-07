@@ -10,10 +10,12 @@ import PoseEstimationLib.pose.models as models
 from scipy.ndimage import gaussian_filter, maximum_filter
 import cv2
 import numpy as np
+import math
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
+
 
 def load_image(img, w, h):
     image = cv2.resize(img, (w, h))
@@ -23,6 +25,7 @@ def load_image(img, w, h):
     image = image.transpose((2, 0, 1))  # Change data layout from HWC to CHW
     image = image[np.newaxis, :, :, :]
     return image
+
 
 def load_model(arch, stacks, blocks, num_classes, mobile, checkpoint_resume):
     # create model
@@ -47,6 +50,7 @@ def load_model(arch, stacks, blocks, num_classes, mobile, checkpoint_resume):
     print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters())/1000000.0))
     model.eval()
     return model
+
 
 def inference(model, image, device):
     input_tensor = torch.from_numpy(image).float().to(device)
@@ -81,13 +85,60 @@ def non_max_supression(plain, windowSize=3, threshold=1e-6):
     plain[under_th_indices] = 0
     return plain * (plain == maximum_filter(plain, footprint=np.ones((windowSize, windowSize))))
 
-def render_kps(cvmat, kps, scale_x, scale_y):
+
+def neckTouch(hand, neck):
+    x1, y1 = hand
+    x2,y2 = neck
+    threshold = 20
+    distance = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    if distance < threshold:
+        return True, distance
+
+    return False, distance
+
+
+def checkForActions(cvmat, kps, scale_x, scale_y):
+    _index = 0
+    leftHand = None
+    rightHand = None
+    neck = None
+    topOfHead = None
+    notch = None
+
     for _kp in kps:
+        _index = _index + 1
+        _x, _y, _conf = _kp
+        if _conf > 0.2:
+            # cv2.circle(cvmat, center=(int(_x * 4 * scale_x), int(_y * 4 * scale_y)), color=(0, 0, 255), radius=5)
+            # cv2.putText(cvmat, str(_index), (_x, _y), cv2.CV_FONT_HERSHEY_SIMPLEX, 2, 255)
+            if(_index == 11): rightHand = [_x, _y]
+            elif(_index == 16): leftHand = [_x, _y]
+            elif(_index == 10): topOfHead = [_x, _y]
+            elif(_index == 9): neck = [_x, _y]
+            elif(_index == 8): notch = [_x, _y]
+
+    hand = rightHand if rightHand else leftHand
+    if hand and neck:
+        triggered, distance = neckTouch(hand, neck)
+
+    cv2.putText(cvmat, str(distance), (0, 0), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255))
+    print(distance)
+
+    return cvmat
+
+
+def render_kps(cvmat, kps, scale_x, scale_y):
+    _index = 0
+
+    for _kp in kps:
+        _index = _index + 1
         _x, _y, _conf = _kp
         if _conf > 0.2:
             cv2.circle(cvmat, center=(int(_x*4*scale_x), int(_y*4*scale_y)), color=(0,0,255), radius=5)
+            # cv2.putText(cvmat, str(_index), (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
 
-    return cvmat
+    return checkForActions(cvmat, kps, scale_x, scale_y)
+
 
 def loadModel(args):
     # load checkpoint
