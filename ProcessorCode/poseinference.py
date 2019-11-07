@@ -120,9 +120,8 @@ def checkForActions(cvmat, kps, scale_x, scale_y):
     hand = rightHand if rightHand else leftHand
     if hand and neck:
         triggered, distance = neckTouch(hand, neck)
-
-    cv2.putText(cvmat, str(distance), (0, 0), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255))
-    print(distance)
+	cv2.putText(cvmat, str(distance), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+   	print("Distance is: {}".format(distance))
 
     return cvmat
 
@@ -191,5 +190,5 @@ if __name__ == '__main__':
     timeCurr = time.time()
     while True:
         main(parser.parse_args(), model, in_res_h, in_res_w)
-        print("Time taken for one image: {}\r".format(time.time() - timeCurr))
+        #print("Time taken for one image: {}\r".format(time.time() - timeCurr))
         timeCurr = time.time()
