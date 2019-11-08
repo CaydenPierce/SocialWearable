@@ -86,10 +86,12 @@ def non_max_supression(plain, windowSize=3, threshold=1e-6):
     return plain * (plain == maximum_filter(plain, footprint=np.ones((windowSize, windowSize))))
 
 
-def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist, cvmat, xScale, yScale):
+# def headTouch(rightHand, leftHand,topOfHead, neck)
 
+
+def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist, cvmat, xScale, yScale):
     shoulderInfo = [abs(rightShoulder[0] - leftShoulder[0]), rightShoulder, leftShoulder]
-    torsoInfo = [abs(neck[0] - waist[0]), neck, waist]
+    torsoInfo = [abs(neck[1] - waist[1]), neck, waist] #torso info was off for torsoLength
 
     xThreshold = .5
     yThreshold = .5
@@ -117,7 +119,6 @@ def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist, cvmat, xSca
     endRange2 = topTorso + (torsoLength * yThreshold)
     
     cv2.rectangle(cvmat, (int(startRange* xScale) , int(endRange*yScale)), (int(startRange2*xScale), int(endRange2*yScale)), (255,0,0), 2)
-
 
     if right:
 	if ((right[0] < endRange) and (right[0] > startRange)):
