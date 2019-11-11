@@ -76,10 +76,10 @@ if __name__ == "__main__":
 		neck = False
 		cvframe = getFrame(cap)
 		image = poseinference.load_image(cvframe, in_res_h, in_res_w) #get frame, then load it in format to be sent through the model
-		neck = poseinference.main(parser.parse_args(), model, in_res_h, in_res_w, image, cvframe)
+		actionDetected, actionName = poseinference.main(parser.parse_args(), model, in_res_h, in_res_w, image, cvframe)
 		#print("Time taken for one image: {}\r".format(time.time() - timeCurr))
-		if neck:
-			sendAction("neck")
+		if actionDetected:
+			sendAction(actionName)
 		timeCurr = time.time()
 
 	killCam(cap)
