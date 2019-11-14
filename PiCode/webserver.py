@@ -6,6 +6,9 @@ Usage::
 """
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
+import os
+from time import sleep
+dir_name = os.path.dirname(os.path.realpath(__file__))
 
 class S(BaseHTTPRequestHandler):
     def _set_response(self):
@@ -26,6 +29,11 @@ class S(BaseHTTPRequestHandler):
 
         self._set_response()
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+        action = post_data.decode('utf-8')
+        if action == "neck":
+            os.system("mpg123 {}/audio/necktouch.mp3".format(dir_name))
+        elif action == "headtouch":
+            os.system("mpg123 {}/audio/headtouch.mp3".format(dir_name))
 
 def run(server_class=HTTPServer, handler_class=S, port=8080):
     logging.basicConfig(level=logging.INFO)
