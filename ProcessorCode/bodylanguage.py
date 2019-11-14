@@ -3,13 +3,14 @@ import cv2
 import time
 import poseinference
 from poseinference import model_names
+from time import sleep
 
 #globals for for fps calculation
 counter = 0
 fpsTime = time.time()
 
 #setup video stream (MJPG)
-def setupCam(ip="192.168.1.10", port="8080"):
+def setupCam(ip="192.168.1.2", port="8080"):
 	cap = cv2.VideoCapture('http://{}:{}/?action=stream'.format(ip, port))
 	return cap
 
@@ -38,7 +39,7 @@ def getFrame(cap):
 	else:
 		return False
 
-def sendAction(actionName, ip="192.168.1.10", port="8081"): #use this to send the wearable/pi a message describing the action we just saw
+def sendAction(actionName, ip="192.168.1.2", port="8081"): #use this to send the wearable/pi a message describing the action we just saw
 	resp = requests.post("http://{}:{}".format(ip, port), str(actionName))
 	print(resp)
 
@@ -78,8 +79,10 @@ if __name__ == "__main__":
 		image = poseinference.load_image(cvframe, in_res_h, in_res_w) #get frame, then load it in format to be sent through the model
 		actionDetected, actionName = poseinference.main(parser.parse_args(), model, in_res_h, in_res_w, image, cvframe)
 		#print("Time taken for one image: {}\r".format(time.time() - timeCurr))
-		if actionDetected:
+		print(actionDetected)
+		if actionDetected.any():
 			sendAction(actionName)
+		sleep(1)
 		timeCurr = time.time()
 
 	killCam(cap)

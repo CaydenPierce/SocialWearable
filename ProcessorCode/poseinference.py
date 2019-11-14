@@ -243,7 +243,7 @@ def main(args, model, in_res_h, in_res_w, image, frame):
 	cvmat = frame
 	scale_x = cvmat.shape[1]*1.0/in_res_w
 	scale_y = cvmat.shape[0]*1.0/in_res_h
-	blah, actionDetected, actionName = render_kps(cvmat, kps, scale_x, scale_y)
+	actionDetected, actionName = render_kps(cvmat, kps, scale_x, scale_y)
 
 	cv2.imshow('x', cvmat)
 	#cv2.imshow('Frame', frame)
