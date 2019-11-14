@@ -170,7 +170,7 @@ def neckTouch(right, left, neck, rightShoulder, leftShoulder, waist, cvmat, xSca
 
 
 
-def checkForActions(cvmat, kps, scale_x, scale_y):
+def checkForActions(kps, scale_x, scale_y, cvmat):
 	_index = 0
 	leftHand = None
 	rightHand = None
@@ -202,7 +202,7 @@ def checkForActions(cvmat, kps, scale_x, scale_y):
 		if triggered:
 			print('triggered neck touch')
 			cv2.putText(cvmat, "<3", (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255)) #draw a heart on their heart
-		return cvmat, True, "Neck Touch"
+		return True, "Neck Touch"
 
 	if ((rightHand or leftHand) and neck and leftShoulder and rightShoulder and topOfHead):
 		print("enough points to detect head touch")
@@ -210,9 +210,9 @@ def checkForActions(cvmat, kps, scale_x, scale_y):
 		if triggered:
 			print('triggered head touch')
 			cv2.putText(cvmat, "[____]__", (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255)) #draw a hat on their head
-		return cvmat, True, "Head Touch"
+		return True, "Head Touch"
 
-	return cvmat, False
+	return False, None
 
 
 def render_kps(cvmat, kps, scale_x, scale_y):
@@ -224,9 +224,6 @@ def render_kps(cvmat, kps, scale_x, scale_y):
 		if _conf > 0.2 or (_index == 10 and _conf > 0.15):
 			cv2.circle(cvmat, center=(int(_x*4*scale_x), int(_y*4*scale_y)), color=(0,0,255), radius=5)
 			# cv2.putText(cvmat, str(_index), (int(_x*4*scale_x), int(_y*4*scale_y)), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
-
-	return checkForActions(cvmat, kps, scale_x, scale_y)
-
 
 def loadModel(args):
 	# load checkpoint
@@ -243,7 +240,9 @@ def main(args, model, in_res_h, in_res_w, image, frame):
 	cvmat = frame
 	scale_x = cvmat.shape[1]*1.0/in_res_w
 	scale_y = cvmat.shape[0]*1.0/in_res_h
-	actionDetected, actionName = render_kps(cvmat, kps, scale_x, scale_y)
+	render_kps(cvmat, kps, scale_x, scale_y)
+
+	actionDetected, actionName = checkForActions(kps, scale_x, scale_y, cvmat)
 
 	cv2.imshow('x', cvmat)
 	#cv2.imshow('Frame', frame)

@@ -80,9 +80,8 @@ if __name__ == "__main__":
 		actionDetected, actionName = poseinference.main(parser.parse_args(), model, in_res_h, in_res_w, image, cvframe)
 		#print("Time taken for one image: {}\r".format(time.time() - timeCurr))
 		print(actionDetected)
-		if actionDetected.any():
+		if actionDetected:
 			sendAction(actionName)
-		sleep(1)
 		timeCurr = time.time()
 
 	killCam(cap)
