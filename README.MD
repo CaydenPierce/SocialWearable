@@ -1,17 +1,9 @@
 # Wearable Body Language Cognitive Extension
 
-## Setup
+Live in a human-machine feedback loop where the computer co-processor provides you with insights into the body language being displayed around you.
 
-On Pi, install mjpg_streamer library: https://github.com/jacksonliam/mjpg-streamer
+This is iteration II of the project. First iteration was a proof of concept that was hacked together in one day by myself and Isaiah Ballah (@isaiahb on github)
 
-## Processor / Server
-
-Run 
-
-```
-pip3 install -r ./ProcessorCode/requirements.txt
-```
 ## References
 
-Fast Human Pose Estimation https://github.com/yuanyuanli85/Fast_Human_Pose_Estimation_Pytorch
-Pytorch-pose: https://github.com/yuanyuanli85/pytorch-pose
+https://github.com/Daniil-Osokin/lightweight-human-pose-estimation.pytorch

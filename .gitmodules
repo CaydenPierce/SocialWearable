@@ -1,0 +1,3 @@
+[submodule "lightweight-human-pose-estimation.pytorch"]
+	path = lightweight-human-pose-estimation.pytorch
+	url = https://github.com/Daniil-Osokin/lightweight-human-pose-estimation.pytorch
