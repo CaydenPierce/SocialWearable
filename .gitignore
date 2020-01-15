@@ -1,2 +1,4 @@
 venv/
 lightweight-human-pose-estimation.pytorch/
+*.swp
+*.pyc

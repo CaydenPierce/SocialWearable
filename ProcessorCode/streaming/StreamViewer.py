@@ -23,7 +23,11 @@ class StreamViewer:
         self.current_frame = None
         self.keep_running = True
 
-    def receive_stream(self, display=True):
+    def receive_stream(self):
+        frame = self.footage_socket.recv_string()
+        self.current_frame = string_to_image(frame)
+        
+    def receive_stream_continuous(self, display=True):
         """
         Displays displayed stream in a window if no arguments are passed.
         Keeps updating the 'current_frame' attribute with the most recent frame, this can be accessed using 'self.current_frame'
