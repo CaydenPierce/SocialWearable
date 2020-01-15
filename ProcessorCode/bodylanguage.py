@@ -1,5 +1,7 @@
 #creds to Daniil-Osokin  for the code in getPose() function (and of course for the sweet library, as mentioned in README)
 
+#TODO get rid of hard coding, make cleaner, put it loop so if connection is dropped it waits for wearable to reconnect
+
 import cv2
 import sys
 sys.path.insert(1, './streaming')
@@ -20,7 +22,8 @@ from val import normalize, pad_width
 from demo import infer_fast
 
 #import body language movement extraction stuff
-from BLmovements import BL
+from BLmovements import BLmovements
+from BLdecode import BLdecode
 
 #import connection handler with wearable
 from WearConn import WearConn
@@ -111,33 +114,76 @@ def getPose(net, img, stride, upsample_ratio):
             return"""
     return pose_keypoints 
 
-if __name__ == "__main__":
+def connect():
+    print("-Opening video stream...")
+    stream = vidstream.StreamViewer('3000')
+    print("-Stream opened")
+    
+    print("-Connecting to wearable")
+    emex = WearConn(port=5000)
+    print("-Wearable connected")
+
+    return stream, emex
+
+def loadBL():
     print("-Loading neural net...")
     net = PoseEstimationWithMobileNet()
     net = net.cuda()
     checkpoint = torch.load("../lightweight-human-pose-estimation.pytorch/checkpoint_iter_370000.pth", map_location='cpu')
     load_state(net, checkpoint)
     print("-Neural net loaded")
+    
+    print("-Opening body language decoders...")
+    bodymove = BLmovements()
+    bodydecode = BLdecode()
+    print("-Body language decoder loaded")
 
-    print("-Opening video stream...")
-    stream = vidstream.StreamViewer('3000')
-    print("-Stream opened")
+    return net, bodymove, bodydecode
 
-    print("-Connecting to wearable")
-    emex = WearConn(port=5000)
-    print("-Wearable connected")
 
+if __name__ == "__main__":
+    net, bodymove, bodydecode = loadBL()
+    stream, emex = connect()
+    
     timeCurr = time.time()
     frames = 0
+    lastUpdateTime = 0
     while True:
-        frames += 1
-        stream.receive_stream()
-        cvframe = stream.current_frame #getFrame(cap)
-        pose = getPose(net, cvframe, 8, 4)
-        print("loop {}".format(frames), end="\r")
-        if pose is not None:
-            movements = BL(pose).results
-            emex.send(movements)
-            print(movements)
-        timeCurr = time.time()
-    emex.end()
+        try:
+            frames += 1
+            stream.receive_stream()
+            cvframe = stream.current_frame #getFrame(cap)
+            pose = getPose(net, cvframe, 8, 4)
+            print("Streaming... Frame #{}".format(frames), end="\r")
+            if pose is not None:
+                bodymove.process(pose)
+                print(bodymove.results)
+                emotion = bodydecode.process(bodymove.results) 
+                if (emotion > 0.6) and ((time.time() - lastUpdateTime) > 10):
+                    stress = {"stress" : emotion}
+                    emex.send(stress)
+                    lastUpdateTime = time.time()
+            timeCurr = time.time()
+        except ConnectionResetError as e:
+            print(e)
+            stream.stop()
+            emex.end()
+            stream, emex = connect()
+        except BrokenPipeError as e:
+            print(e)
+            stream.stop()
+            emex.end()
+            stream, emex = connect()
+        except Exception as e:
+            print(e)
+            stream.stop()
+            emex.end()
+            stream, emex = connect()
+        except KeyboardInterrupt as e:
+            print(e)
+            stream.stop()
+            emex.end()
+            print("Sock closed. Goodbye")
+            break
+
+    

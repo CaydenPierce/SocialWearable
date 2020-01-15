@@ -16,16 +16,22 @@ class StreamViewer:
 
         :param port: Port which is used for streaming
         """
-        context = zmq.Context()
-        self.footage_socket = context.socket(zmq.SUB)
-        self.footage_socket.bind('tcp://*:' + port)
+        self.context = zmq.Context()
+        self.footage_socket = self.context.socket(zmq.SUB)
         self.footage_socket.setsockopt_string(zmq.SUBSCRIBE, np.unicode(''))
+        #self.footage_socket.setsockopt( zmq.LINGER,      0 )  # ____POLICY: set upon instantiations
+        #self.footage_socket.setsockopt( zmq.AFFINITY,    1 )  # ____POLICY: map upon IO-type thread
+        self.footage_socket.setsockopt( zmq.RCVTIMEO, 10000 )
+        self.footage_socket.bind('tcp://*:' + port)
         self.current_frame = None
         self.keep_running = True
 
     def receive_stream(self):
-        frame = self.footage_socket.recv_string()
-        self.current_frame = string_to_image(frame)
+        try:
+            frame = self.footage_socket.recv_string()
+            self.current_frame = string_to_image(frame)
+        except:
+            raise Exception("Timeout")
         
     def receive_stream_continuous(self, display=True):
         """
@@ -61,6 +67,8 @@ class StreamViewer:
         :return: None
         """
         self.keep_running = False
+        self.footage_socket.close()
+        self.context.term()
 
 def main():
     port = PORT

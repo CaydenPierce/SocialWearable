@@ -1,20 +1,24 @@
 import math
 
-class BL:
-    def __init__(self, keypoints, neckThresh=40, headThresh=40):
-        self.keypoints = keypoints
+class BLmovements:
+    def __init__(self, neckThresh=40, headThresh=45):
         self.neckThresh = headThresh
         self.headThresh = headThresh
         self.kpt_dict = dict()
-        kpt_names = ['nose', 'neck',
+        self.kpt_names = ['nose', 'neck',
                  'r_sho', 'r_elb', 'r_wri', 'l_sho', 'l_elb', 'l_wri',
                  'r_hip', 'r_knee', 'r_ank', 'l_hip', 'l_knee', 'l_ank',
                  'r_eye', 'l_eye',
                  'r_ear', 'l_ear']
-        for i, name in enumerate(kpt_names):
+        self.results = dict()
+        
+    def process(self, keypoints):
+        self.keypoints = keypoints
+        for i, name in enumerate(self.kpt_names):
             self.kpt_dict[name] = keypoints[i] 
         self.results = self.pipeline()
 
+        
     def getScale(self): #calculates a scaling factor based upon a very rough idea of how far away someone is
         avgHeight = 300 #170 #centimeter
         avgTorsoProportion = 3/8 #torso is 3 / 8ths of height, https://www.researchgate.net/figure/Proportions-of-the-Human-Body-with-Respect-to-the-Height-of-the-Head_fig4_228867476
@@ -28,9 +32,7 @@ class BL:
     def neckTouch(self):
         leftHandDist = abs(self.distance(self.kpt_dict['l_wri'], self.kpt_dict['neck']))
         rightHandDist = abs(self.distance(self.kpt_dict['r_wri'], self.kpt_dict['neck']))
-        #print(leftHandDist, type(leftHandDist))
         dist = min([leftHandDist, rightHandDist]) / self.scaler
-        print("neck {}".format(dist))
         if dist < self.neckThresh:
             return True
         else:
@@ -40,7 +42,6 @@ class BL:
         leftHandDist = abs(self.distance(self.kpt_dict['l_wri'], self.kpt_dict['nose']))
         rightHandDist = abs(self.distance(self.kpt_dict['r_wri'], self.kpt_dict['nose']))
         dist = min([leftHandDist, rightHandDist]) / self.scaler
-        print("head {}".format(dist))
         if dist < self.headThresh:
             return True
         else:
