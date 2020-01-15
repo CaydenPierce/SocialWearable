@@ -1,4 +1,4 @@
-#creds to Daniil-Osokin as this is largely taken from the demo for the pose estimation library
+#creds to Daniil-Osokin  for the code in getPose() function (and of course for the sweet library, as mentioned in README)
 
 import cv2
 import sys
