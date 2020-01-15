@@ -21,10 +21,13 @@ class Streamer:
         """
 
         print("Connecting to ", server_address, "at", port)
-        context = zmq.Context()
-        self.footage_socket = context.socket(zmq.PUB)
+        self.context = zmq.Context()
+        self.footage_socket = self.context.socket(zmq.PUB)
+        self.footage_socket.setsockopt(zmq.LINGER, 0)
+        self.footage_socket.setsockopt( zmq.RCVTIMEO, 10000 )
         self.footage_socket.connect('tcp://' + server_address + ':' + port)
         self.keep_running = True
+        self.frameNum = 0
 
     def start(self):
         """
@@ -34,29 +37,31 @@ class Streamer:
         """
         print("Streaming Started...")
         camera = Camera(height=640, width=480)
-        camera.start_capture(fps=8)
+        camera.start_capture(fps=3)
         self.keep_running = True
+
+        old_frame_string = None
 
         while self.footage_socket and self.keep_running:
             try:
                 fpsTime = time.time()
                 currTime = time.time()
                 frame = camera.current_frame.read()  # grab the current frame
+                self.frameNum += 1
                 currTime = time.time()
-                #print("Frame read time: {}".format(time.time() - currTime))
                 currTime = time.time()
                 image_as_string = image_to_string(frame)
-                #print("Stringify time: {}".format(time.time() - currTime))
+                while image_as_string == old_frame_string:
+                    image_as_string = image_to_string(camera.current_frame.read())
                 currTime = time.time()
                 self.footage_socket.send(image_as_string)
-                #print("Pipe time: {}".format(time.time() - currTime))
-                #print("Fps is: {}".format(1/(time.time() - fpsTime)))
-
+                old_frame_string = image_as_string
             except KeyboardInterrupt:
                 cv2.destroyAllWindows()
                 break
         print("Streaming Stopped!")
         cv2.destroyAllWindows()
+        return
 
     def stop(self):
         """
@@ -64,6 +69,8 @@ class Streamer:
         :return: None
         """
         self.keep_running = False
+        #self.footage_socket.close()
+        #self.context.term()
 
 
 def main():
