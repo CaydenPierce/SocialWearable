@@ -42,7 +42,7 @@ def main():
     sock = openConn(infoPort)
     streamer = Streamer(serverName, str(camPort))
     t1 = threading.Thread(target=streamer.start).start()
-    
+
     try:
         while True:
             data = sock.recv(1024)

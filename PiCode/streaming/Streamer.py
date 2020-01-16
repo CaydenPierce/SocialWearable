@@ -24,7 +24,7 @@ class Streamer:
         self.context = zmq.Context()
         self.footage_socket = self.context.socket(zmq.PUB)
         self.footage_socket.setsockopt(zmq.LINGER, 0)
-        self.footage_socket.setsockopt( zmq.RCVTIMEO, 10000 )
+        self.footage_socket.setsockopt( zmq.RCVTIMEO, 30000 )
         self.footage_socket.connect('tcp://' + server_address + ':' + port)
         self.keep_running = True
         self.frameNum = 0
