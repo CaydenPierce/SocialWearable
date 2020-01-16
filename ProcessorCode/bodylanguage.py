@@ -28,6 +28,10 @@ from BLdecode import BLdecode
 #import connection handler with wearable
 from WearConn import WearConn
 
+#import facial emotion stuff
+sys.path.insert(1, './ResidualMaskingNetwork')
+from ResidualMaskingNetwork import ssd_infer
+
 #globals for fps calculation
 counter = 0
 fpsTime = time.time()
@@ -100,18 +104,19 @@ def getPose(net, img, stride, upsample_ratio):
             #found_keypoints = pose.found_keypoints
 
     img = cv2.addWeighted(orig_img, 0.6, img, 0.4, 0)
-    """if track_ids == True:
+    track_ids = True
+    if track_ids == True:
             propagate_ids(previous_poses, current_poses)
             previous_poses = current_poses
             for pose in current_poses:
                     cv2.rectangle(img, (pose.bbox[0], pose.bbox[1]),
                                               (pose.bbox[0] + pose.bbox[2], pose.bbox[1] + pose.bbox[3]), (0, 255, 0))
                     cv2.putText(img, 'id: {}'.format(pose.id), (pose.bbox[0], pose.bbox[1] - 16),
-                                            cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255))"""
-    """cv2.imshow('Lightweight Human Pose Estimation Python Demo', img)
+                                            cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255))
+    cv2.imshow('Lightweight Human Pose Estimation Python Demo', img)
     key = cv2.waitKey(33)
     if key == 27:  # esc
-            return"""
+            return
     return pose_keypoints 
 
 def connect():
@@ -125,24 +130,28 @@ def connect():
 
     return stream, emex
 
-def loadBL():
-    print("-Loading neural net...")
-    net = PoseEstimationWithMobileNet()
-    net = net.cuda()
+def loadEmotion():
+    print("-Loading pose estimation neural net...")
+    poseEstNet = PoseEstimationWithMobileNet()
+    poseEstNet = poseEstNet.cuda()
     checkpoint = torch.load("../lightweight-human-pose-estimation.pytorch/checkpoint_iter_370000.pth", map_location='cpu')
-    load_state(net, checkpoint)
-    print("-Neural net loaded")
+    load_state(poseEstNet, checkpoint)
+    print("-Pose estimation neural net loaded")
     
     print("-Opening body language decoders...")
     bodymove = BLmovements()
     bodydecode = BLdecode()
     print("-Body language decoder loaded")
 
-    return net, bodymove, bodydecode
+    print("-Loading facial emotion neural net...")
+    facialEmotionnNet, image_size = ssd_infer.load()
+    print("-Facial emotion neural net loaded")
+
+    return poseEstNet, bodymove, bodydecode, facialEmotionnNet, image_size
 
 
 if __name__ == "__main__":
-    net, bodymove, bodydecode = loadBL()
+    poseEstNet, bodymove, bodydecode, facialEmotionnNet, image_size = loadEmotion()
     stream, emex = connect()
     
     timeCurr = time.time()
@@ -153,7 +162,10 @@ if __name__ == "__main__":
             frames += 1
             stream.receive_stream()
             cvframe = stream.current_frame #getFrame(cap)
-            pose = getPose(net, cvframe, 8, 4)
+            pose = getPose(poseEstNet, cvframe, 8, 4)
+            if frames % 10 == 0:
+                facialExp = ssd_infer.infer(cvframe, facialEmotionnNet, image_size)
+            
             print("Streaming... Frame #{}".format(frames), end="\r")
             if pose is not None:
                 bodymove.process(pose)

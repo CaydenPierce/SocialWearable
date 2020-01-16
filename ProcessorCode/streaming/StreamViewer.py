@@ -21,7 +21,7 @@ class StreamViewer:
         self.footage_socket.setsockopt_string(zmq.SUBSCRIBE, np.unicode(''))
         #self.footage_socket.setsockopt( zmq.LINGER,      0 )  # ____POLICY: set upon instantiations
         #self.footage_socket.setsockopt( zmq.AFFINITY,    1 )  # ____POLICY: map upon IO-type thread
-        self.footage_socket.setsockopt( zmq.RCVTIMEO, 10000 )
+        self.footage_socket.setsockopt( zmq.RCVTIMEO, 30000 )
         self.footage_socket.bind('tcp://*:' + port)
         self.current_frame = None
         self.keep_running = True
