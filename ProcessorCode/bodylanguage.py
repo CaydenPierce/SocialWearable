@@ -4,8 +4,7 @@
 
 import cv2
 import sys
-sys.path.insert(1, './streaming')
-import StreamViewer as vidstream #our custom streaming stuff... way too slow but a bandaid for now
+
 import requests
 import time
 from time import sleep
@@ -48,12 +47,7 @@ def killCam(cap):
 #receives video stream, computes fps, displays image
 def getFrame(cap):
     global counter, fpsTime
-    ret, frame = cap.read(cv2.IMREAD_COLOR)
-    """if ret:
-        cv2.imshow('Frame', frame)
-        c = cv2.waitKey(10)
-    else:
-        return False"""
+    ret, frame = cap.read()
     
     #update fps display
     counter += 1
@@ -102,7 +96,6 @@ def getPose(net, img, stride, upsample_ratio):
             #current_poses.append(pose)
             #pose.draw(img)
             #found_keypoints = pose.found_keypoints
-
     img = cv2.addWeighted(orig_img, 0.6, img, 0.4, 0)
     track_ids = True
     if track_ids == True:
@@ -121,7 +114,7 @@ def getPose(net, img, stride, upsample_ratio):
 
 def connect():
     print("-Opening video stream...")
-    stream = vidstream.StreamViewer('3000')
+    stream = cv2.VideoCapture("/dev/stdin")
     print("-Stream opened")
     
     print("-Connecting to wearable")
@@ -144,14 +137,14 @@ def loadEmotion():
     print("-Body language decoder loaded")
 
     print("-Loading facial emotion neural net...")
-    facialEmotionnNet, image_size = ssd_infer.load()
+    facialEmotionNet, image_size = ssd_infer.load()
     print("-Facial emotion neural net loaded")
 
-    return poseEstNet, bodymove, bodydecode, facialEmotionnNet, image_size
+    return poseEstNet, bodymove, bodydecode, facialEmotionNet, image_size
 
 
 if __name__ == "__main__":
-    poseEstNet, bodymove, bodydecode, facialEmotionnNet, image_size = loadEmotion()
+    poseEstNet, bodymove, bodydecode, facialEmotionNet, image_size = loadEmotion()
     stream, emex = connect()
     
     timeCurr = time.time()
@@ -160,11 +153,13 @@ if __name__ == "__main__":
     while True:
         try:
             frames += 1
-            stream.receive_stream()
-            cvframe = stream.current_frame #getFrame(cap)
+            cvframe = getFrame(stream) #.read() 
+            if cvframe is None:
+                continue
             pose = getPose(poseEstNet, cvframe, 8, 4)
             if frames % 10 == 0:
-                facialExp = ssd_infer.infer(cvframe, facialEmotionnNet, image_size)
+                facialExp = ssd_infer.infer(cvframe, facialEmotionNet, image_size)
+                print(facialExp)
             
             print("Streaming... Frame #{}".format(frames), end="\r")
             if pose is not None:
@@ -176,24 +171,14 @@ if __name__ == "__main__":
                     emex.send(stress)
                     lastUpdateTime = time.time()
             timeCurr = time.time()
-        except ConnectionResetError as e:
+        except (ConnectionResetError, BrokenPipeError, Exception) as e:
             print(e)
-            stream.stop()
-            emex.end()
-            stream, emex = connect()
-        except BrokenPipeError as e:
-            print(e)
-            stream.stop()
-            emex.end()
-            stream, emex = connect()
-        except Exception as e:
-            print(e)
-            stream.stop()
+            stream.release()
             emex.end()
             stream, emex = connect()
         except KeyboardInterrupt as e:
             print(e)
-            stream.stop()
+            stream.release()
             emex.end()
             print("Sock closed. Goodbye")
             break

@@ -2,7 +2,6 @@
 
 Enhance your social intelligence by living in a human-machine feedback loop where the computer co-processor provides you with insights into the non-verbal communication being displayed around you. The system currently does body language and facial expression decoding to provide you with heads up notifications about the social situation that's going on around you. This can also be used to emotionally tag mmemories.
 
-
 This runs on a setup where the ProcessorCode folder are the server scripts, and the PiCode are the scripts to run on a Pi based wearable. I have my domain name hardcoded here, feel free to move that to a config.py and setup your own server.
 
 ## Setup
@@ -18,11 +17,10 @@ That should be all.
 
 This is using the submodule [1] for all of the pose estimation. Thanks to Daniil Osokin and team for a great net.
 
-The wearable is streaming video using [2]. Thanks to Rohan Sawant for this solution. Still hacking away at this, will properly implement this as a submodule soon.
+The wearable is streaming video the bash scripts in PiCode and Processor code. 24FPS 720P over the internet getting saved to a file and piped into python to be processed (thanks to OpenCV). Thanks to Rohan Sawant for this solution. Still hacking away at this, will properly implement this as a submodule soon.
 
 ## References
 
 [1] https://github.com/Daniil-Osokin/lightweight-human-pose-estimation.pytorch  
-[2] https://github.com/CT83/SmoothStream  
-[3] Navarro, Julia, and Marvin Karlins. What every body is saying. HarperCollins Publishers, 2008.  
-[4] https://github.com/phamquiluan/ResidualMaskingNetwork#benchmarking  
+[2] Navarro, Julia, and Marvin Karlins. What every body is saying. HarperCollins Publishers, 2008.  
+[3] https://github.com/phamquiluan/ResidualMaskingNetwork#benchmarking  

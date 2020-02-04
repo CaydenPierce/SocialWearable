@@ -3,7 +3,7 @@ import numpy as np
 
 class BLdecode:
     def __init__(self):
-        self.mNum = 200 #number of past actions considered
+        self.mNum = 70 #number of past actions considered
         self.necks = np.zeros(self.mNum, dtype=bool)
         self.heads = np.zeros(self.mNum, dtype=bool)
         self.state = {'stress' : 100}
