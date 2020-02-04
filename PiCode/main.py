@@ -26,10 +26,9 @@ def clean(data): #this seems to me to be a bad thing. I guess the alternative is
     return data[:data.index("}")+1]
 
 def updateUser(data):
-    if data['stress'] > 0.7:
-        print("Stress detected.")
-        #os.system('mpg123 ./audio/stress.mp3 &')
-        pygame.mixer.music.play()
+    print("Stress detected.")
+    #os.system('mpg123 ./audio/stress.mp3 &')
+    pygame.mixer.music.play()
 
 def setupAudio():
     pygame.mixer.init()
