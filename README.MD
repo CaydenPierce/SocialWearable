@@ -7,19 +7,16 @@ This runs on a setup where the ProcessorCode folder are the server scripts, and 
 ## Setup
 
 -Install the "Lightweight OpenPose" git submodule and follow instructions on the github page [1] for install. Download the pretrained COCO weight as this is what we use. Place it in the root folder of the openpose git submodule.  
-Install the "ResidualMaskingNetwork Facial Expression" neural net library from [4]. This also is not yet a proper submodule. It is basically stock except I have changed the ssd_infer.py script to run with the rest of this library. Follow the instruction at [3] "Live Demo" to setup the inference (use the latest pretrained net).  
--Run ProcessorCode/bodylanguage.py on your processor.  
--Run PiCode/main.py on your PiBased wearable.  
+-Install the "ResidualMaskingNetwork Facial Expression" neural net library from [4]. Follow the instruction from [3] at sectoin "Live Demo" to setup the inference (download the models and put them where the github specifies).  
+-Run ProcessorCode/receiveStream.sh on your processor.  
+-Run PiCode/stream.sh on your Pi-based wearable.  
+-The wearable is streaming video the bash scripts in PiCode and Processor code. 24FPS 720P over the internet getting saved to a file and piped into python to be processed (thanks to OpenCV).
 
 That should be all.  
 
-## Credit
+## Credit and References
 
-This is using the submodule [1] for all of the pose estimation. Thanks to Daniil Osokin and team for a great net.
-
-The wearable is streaming video the bash scripts in PiCode and Processor code. 24FPS 720P over the internet getting saved to a file and piped into python to be processed (thanks to OpenCV). Thanks to Rohan Sawant for this solution. Still hacking away at this, will properly implement this as a submodule soon.
-
-## References
+This is using the submodule [1] for all of the pose estimation. Thanks to Daniil Osokin and team for a great net. Also thanks to Luan Pham and team for the facial expression neural network.
 
 [1] https://github.com/Daniil-Osokin/lightweight-human-pose-estimation.pytorch  
 [2] Navarro, Julia, and Marvin Karlins. What every body is saying. HarperCollins Publishers, 2008.  

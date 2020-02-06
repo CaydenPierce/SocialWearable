@@ -5,17 +5,9 @@ import cv2
 import numpy as np
 import torch
 from torchvision.transforms import transforms
-from .models import densenet121, resmasking_dropout1
+from ResidualMaskingNetwork.models import densenet121, resmasking_dropout1
 
-#import sys
-#sys.path.insert(0, "../streaming")
-#import StreamViewer as vidstream #our custom streaming stuff... way too slow but a bandaid for now
-#
-#def getFrame(stream):
-#    stream.receive_stream()
-#    cvframe = stream.current_frame #getFrame(cap)
-#    return True, cvframe
-#
+
 def ensure_color(image):
     if len(image.shape) == 2:
         return np.dstack([image] * 3)
@@ -23,9 +15,6 @@ def ensure_color(image):
         return np.dstack([image] * 3)
     return image
 
-
-
-net = cv2.dnn.readNetFromCaffe("./ResidualMaskingNetwork/deploy.prototxt.txt", "./ResidualMaskingNetwork/res10_300x300_ssd_iter_140000.caffemodel")
 
 
 transform = transforms.Compose([
@@ -47,6 +36,7 @@ FER_2013_EMO_DICT = {
 
 def load():
     # load configs and set random seed
+    net = cv2.dnn.readNetFromCaffe("./ResidualMaskingNetwork/deploy.prototxt.txt", "./ResidualMaskingNetwork/res10_300x300_ssd_iter_140000.caffemodel")
     configs = json.load(open('./ResidualMaskingNetwork/configs/fer2013_config.json'))
     image_size = (configs['image_size'], configs['image_size'])
 
@@ -54,25 +44,13 @@ def load():
     model = resmasking_dropout1(in_channels=3, num_classes=7)
     model.cuda()
 
-    # state = torch.load('./saved/checkpoints/densenet121_rot30_2019Nov11_14.23')
-    # state = torch.load('./saved/checkpoints/resmasking_dropout1_rot30_2019Nov17_14.33')
     state = torch.load('./ResidualMaskingNetwork/saved/checkpoints/Z_resmasking_dropout1_rot30_2019Nov30_13.32')
     model.load_state_dict(state['net'])
     model.eval()
-    return model, image_size
-
-    #vid = cv2.VideoCapture(0)
-
-    # cv2.namedWindow('disp')
-    # cv2.resizeWindow('disp', width=800)
+    return model, net, image_size
    
-def infer(frame, model, image_size): #pass me cv2 frame
+def infer(frame, model, image_size, net): #pass me cv2 frame
     with torch.no_grad():
-        #while True:
-            #ret, frame = getFrame(stream) #vid.read()
-#            if frame is None or ret is not True:
-#                continue
-
         try:
             frame = np.fliplr(frame).astype(np.uint8)
             # frame += 50
@@ -103,11 +81,6 @@ def infer(frame, model, image_size): #pass me cv2 frame
                 end_x = int(center_x + square_length)
                 end_y = int(center_y + square_length)
                 
-
-                #cv2.rectangle(frame , (start_x, start_y), (end_x, end_y), (179, 255, 179), 2)
-                # cv2.rectangle(frame , (x, y), (x + w, y + h), (179, 255, 179), 2)
-
-                # face = gray[y:y + h, x:x + w]
                 face = gray[start_y:end_y, start_x:end_x]
 
                 face = ensure_color(face)
@@ -119,7 +92,6 @@ def infer(frame, model, image_size): #pass me cv2 frame
                 output = torch.squeeze(model(face), 0)
                 proba = torch.softmax(output, 0)
                 
-                # emo_idx = torch.argmax(proba, dim=0).item()
                 emo_proba, emo_idx = torch.max(proba, dim=0)
                 emo_idx = emo_idx.item()
                 emo_proba = emo_proba.item()
@@ -127,35 +99,9 @@ def infer(frame, model, image_size): #pass me cv2 frame
                 emo_label = FER_2013_EMO_DICT[emo_idx]
                 print(emo_label)
                 return emo_idx
-
-#                label_size, base_line = cv2.getTextSize('{}: 000'.format(emo_label), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
-#
-#                cv2.rectangle(
-#                    frame,
-#                    (end_x, start_y + 1 - label_size[1]),
-#                    (end_x + label_size[0], start_y + 1 + base_line),
-#                    (223, 128, 255),
-#                    cv2.FILLED
-#                )
-#                cv2.putText(
-#                    frame,
-#                    '{} {}'.format(emo_label, int(emo_proba * 100)),
-#                    (end_x, start_y + 1),
-#                    cv2.FONT_HERSHEY_SIMPLEX,
-#                    0.8, (0, 0, 0), 2
-#                )
-             
-            
-                
-            #cv2.imshow('disp', frame)
-            # cv2.imshow('disp', np.concatenate((gray ), axis=1))
-            #if cv2.waitKey(1) == ord('q'):
-                #break
-
-        except:
+        except Exception as e:
+            print(e)
             return None  
-#        cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":
     main()

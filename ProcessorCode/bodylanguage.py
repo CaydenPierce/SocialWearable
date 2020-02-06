@@ -28,8 +28,9 @@ from BLdecode import BLdecode
 from WearConn import WearConn
 
 #import facial emotion stuff
-sys.path.insert(1, './ResidualMaskingNetwork')
-from ResidualMaskingNetwork import ssd_infer
+#sys.path.insert(1, './ResidualMaskingNetwork')
+#from ResidualMaskingNetwork import ssd_infer
+import faceExpInfer as ssd_infer
 
 #globals for fps calculation
 counter = 0
@@ -137,14 +138,14 @@ def loadEmotion():
     print("-Body language decoder loaded")
 
     print("-Loading facial emotion neural net...")
-    facialEmotionNet, image_size = ssd_infer.load()
+    facialEmotionNet, faceRecNet, image_size = ssd_infer.load()
     print("-Facial emotion neural net loaded")
 
-    return poseEstNet, bodymove, bodydecode, facialEmotionNet, image_size
+    return poseEstNet, bodymove, bodydecode, facialEmotionNet, faceRecNet, image_size
 
 
 if __name__ == "__main__":
-    poseEstNet, bodymove, bodydecode, facialEmotionNet, image_size = loadEmotion()
+    poseEstNet, bodymove, bodydecode, facialEmotionNet, faceRecNet, image_size = loadEmotion()
     stream, emex = connect()
     
     timeCurr = time.time()
@@ -158,7 +159,7 @@ if __name__ == "__main__":
                 continue
             pose = getPose(poseEstNet, cvframe, 8, 4)
             if frames % 10 == 0:
-                facialExp = ssd_infer.infer(cvframe, facialEmotionNet, image_size)
+                facialExp = ssd_infer.infer(cvframe, facialEmotionNet, image_size, faceRecNet)
                 print(facialExp)
             
             print("Streaming... Frame #{}".format(frames), end="\r")
