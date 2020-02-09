@@ -11,7 +11,15 @@ This runs on a setup where the ProcessorCode folder are the server scripts, and 
 -Run ProcessorCode/receiveStream.sh on your processor.  
 -Run PiCode/stream.sh on your Pi-based wearable.  
 -The wearable is streaming video the bash scripts in PiCode and Processor code. 24FPS 720P over the internet getting saved to a file and piped into python to be processed (thanks to OpenCV).
-
+-create a named pipe in the Processor code section for netcat to stream into and OpenCV to then stream out of:
+```
+mknod emex p
+```
+or
+```
+mkfif emex
+```
+  
 That should be all.  
 
 ## Credit and References

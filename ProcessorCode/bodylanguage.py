@@ -10,6 +10,7 @@ import time
 from time import sleep
 import torch
 import numpy as np
+import subprocess
 
 #importing pose estimation library stuffs
 sys.path.insert(1, '../lightweight-human-pose-estimation.pytorch') #this points to the pose estimation library
@@ -48,6 +49,8 @@ def killCam(cap):
 #receives video stream, computes fps, displays image
 def getFrame(cap):
     global counter, fpsTime
+    for i in range(5):
+        cap.grab()
     ret, frame = cap.read()
     
     #update fps display
@@ -61,7 +64,7 @@ def getFrame(cap):
     if ret == True:
         return frame
     else:
-        return False
+        return None
 
 def sendAction(actionName, ip="192.168.1.2", port="8081"): #use this to send the wearable/pi a message describing the action we just saw
     resp = requests.post("http://{}:{}".format(ip, port), str(actionName))
@@ -115,12 +118,16 @@ def getPose(net, img, stride, upsample_ratio):
 
 def connect():
     print("-Opening video stream...")
-    stream = cv2.VideoCapture("/dev/stdin")
+    sub = subprocess.Popen("./rcv.sh", stdout=subprocess.PIPE)
+    stream = cv2.VideoCapture("emex")
     print("-Stream opened")
     
     print("-Connecting to wearable")
     emex = WearConn(port=5000)
     print("-Wearable connected")
+    
+    for i in range(200):
+        stream.grab()
 
     return stream, emex
 
@@ -153,6 +160,12 @@ if __name__ == "__main__":
     lastUpdateTime = 0
     while True:
         try:
+            if frames%100 == 0:
+                msg = {"test" : 1}
+                print('try')
+                emex.send(msg)
+                print("sent!")
+            
             frames += 1
             cvframe = getFrame(stream) #.read() 
             if cvframe is None:
@@ -168,7 +181,7 @@ if __name__ == "__main__":
                 print(bodymove.results)
                 emotion = bodydecode.process(bodymove.results) 
                 if (emotion > 0.6) and ((time.time() - lastUpdateTime) > 10):
-                    stress = {"stress" : emotion}
+                    stress = {"test" : 0, "stress" : emotion}
                     emex.send(stress)
                     lastUpdateTime = time.time()
             timeCurr = time.time()
@@ -183,5 +196,7 @@ if __name__ == "__main__":
             emex.end()
             print("Sock closed. Goodbye")
             break
+        except:
+            print("fuck")
 
     
