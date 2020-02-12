@@ -4,13 +4,13 @@
 
 import cv2
 import sys
-sys.path.insert(1, './streaming')
-import StreamViewer as vidstream #our custom streaming stuff... way too slow but a bandaid for now
+
 import requests
 import time
 from time import sleep
 import torch
 import numpy as np
+import subprocess
 
 #importing pose estimation library stuffs
 sys.path.insert(1, '../lightweight-human-pose-estimation.pytorch') #this points to the pose estimation library
@@ -29,8 +29,9 @@ from BLdecode import BLdecode
 from WearConn import WearConn
 
 #import facial emotion stuff
-sys.path.insert(1, './ResidualMaskingNetwork')
-from ResidualMaskingNetwork import ssd_infer
+#sys.path.insert(1, './ResidualMaskingNetwork')
+#from ResidualMaskingNetwork import ssd_infer
+import faceExpInfer as ssd_infer
 
 #globals for fps calculation
 counter = 0
@@ -48,12 +49,9 @@ def killCam(cap):
 #receives video stream, computes fps, displays image
 def getFrame(cap):
     global counter, fpsTime
-    ret, frame = cap.read(cv2.IMREAD_COLOR)
-    """if ret:
-        cv2.imshow('Frame', frame)
-        c = cv2.waitKey(10)
-    else:
-        return False"""
+    for i in range(5):
+        cap.grab()
+    ret, frame = cap.read()
     
     #update fps display
     counter += 1
@@ -66,7 +64,7 @@ def getFrame(cap):
     if ret == True:
         return frame
     else:
-        return False
+        return None
 
 def sendAction(actionName, ip="192.168.1.2", port="8081"): #use this to send the wearable/pi a message describing the action we just saw
     resp = requests.post("http://{}:{}".format(ip, port), str(actionName))
@@ -102,7 +100,6 @@ def getPose(net, img, stride, upsample_ratio):
             #current_poses.append(pose)
             #pose.draw(img)
             #found_keypoints = pose.found_keypoints
-
     img = cv2.addWeighted(orig_img, 0.6, img, 0.4, 0)
     track_ids = True
     if track_ids == True:
@@ -121,12 +118,16 @@ def getPose(net, img, stride, upsample_ratio):
 
 def connect():
     print("-Opening video stream...")
-    stream = vidstream.StreamViewer('3000')
+    sub = subprocess.Popen("./rcv.sh", stdout=subprocess.PIPE)
+    stream = cv2.VideoCapture("emex")
     print("-Stream opened")
     
     print("-Connecting to wearable")
     emex = WearConn(port=5000)
     print("-Wearable connected")
+    
+    for i in range(200):
+        stream.grab()
 
     return stream, emex
 
@@ -144,14 +145,14 @@ def loadEmotion():
     print("-Body language decoder loaded")
 
     print("-Loading facial emotion neural net...")
-    facialEmotionnNet, image_size = ssd_infer.load()
+    facialEmotionNet, faceRecNet, image_size = ssd_infer.load()
     print("-Facial emotion neural net loaded")
 
-    return poseEstNet, bodymove, bodydecode, facialEmotionnNet, image_size
+    return poseEstNet, bodymove, bodydecode, facialEmotionNet, faceRecNet, image_size
 
 
 if __name__ == "__main__":
-    poseEstNet, bodymove, bodydecode, facialEmotionnNet, image_size = loadEmotion()
+    poseEstNet, bodymove, bodydecode, facialEmotionNet, faceRecNet, image_size = loadEmotion()
     stream, emex = connect()
     
     timeCurr = time.time()
@@ -159,12 +160,20 @@ if __name__ == "__main__":
     lastUpdateTime = 0
     while True:
         try:
+            if frames%100 == 0:
+                msg = {"test" : 1}
+                print('try')
+                emex.send(msg)
+                print("sent!")
+            
             frames += 1
-            stream.receive_stream()
-            cvframe = stream.current_frame #getFrame(cap)
+            cvframe = getFrame(stream) #.read() 
+            if cvframe is None:
+                continue
             pose = getPose(poseEstNet, cvframe, 8, 4)
             if frames % 10 == 0:
-                facialExp = ssd_infer.infer(cvframe, facialEmotionnNet, image_size)
+                facialExp = ssd_infer.infer(cvframe, facialEmotionNet, image_size, faceRecNet)
+                print(facialExp)
             
             print("Streaming... Frame #{}".format(frames), end="\r")
             if pose is not None:
@@ -172,30 +181,22 @@ if __name__ == "__main__":
                 print(bodymove.results)
                 emotion = bodydecode.process(bodymove.results) 
                 if (emotion > 0.6) and ((time.time() - lastUpdateTime) > 10):
-                    stress = {"stress" : emotion}
+                    stress = {"test" : 0, "stress" : emotion}
                     emex.send(stress)
                     lastUpdateTime = time.time()
             timeCurr = time.time()
-        except ConnectionResetError as e:
+        except (ConnectionResetError, BrokenPipeError, Exception) as e:
             print(e)
-            stream.stop()
-            emex.end()
-            stream, emex = connect()
-        except BrokenPipeError as e:
-            print(e)
-            stream.stop()
-            emex.end()
-            stream, emex = connect()
-        except Exception as e:
-            print(e)
-            stream.stop()
+            stream.release()
             emex.end()
             stream, emex = connect()
         except KeyboardInterrupt as e:
             print(e)
-            stream.stop()
+            stream.release()
             emex.end()
             print("Sock closed. Goodbye")
             break
+        except:
+            print("fuck")
 
     
