@@ -1,0 +1,9 @@
+I am figuring out how to do this all much better... here are some notes
+
+
+Run on server:
+netcat -l -k 1234 > lasttest.h264 #waits for conections and saves contents
+MP4Box -add lasttest.h264:fps=24 newstuff.mp4
+
+Run on client:
+raspivid -t 0 -w 1280 -h 720 -fps 24 -b 15000000 -o - | nc 192.168.43.101 1234 #stream 720p and 24 fps over the internet

@@ -5,14 +5,11 @@ import threading
 import sys
 import os
 import pygame
-
-sys.path.insert(0, "./streaming")
-
-#our custom stuffs
-from streaming.Streamer import Streamer
+import time
+import subprocess
 
 #config
-camPort = 3000
+camPort = 1234
 infoPort = 5000
 serverName = 'caydenpierce.com'
 
@@ -27,20 +24,23 @@ def clean(data): #this seems to me to be a bad thing. I guess the alternative is
 
 def updateUser(data):
     print("Stress detected.")
-    #os.system('mpg123 ./audio/stress.mp3 &')
     pygame.mixer.music.play()
 
 def setupAudio():
     pygame.mixer.init()
     pygame.mixer.music.load("./audio/stress.mp3")
-    #pygame.mixer.music.play()
 
 
 def main():
+    t1 = threading.Thread(target=subprocess.run("./stream.sh")).start()
+    #subprocess.Popen("./stream.sh", shell=False)
+    print("stream started")
     setupAudio()
+    print("audio setup")
+    time.sleep(20)
     sock = openConn(infoPort)
-    streamer = Streamer(serverName, str(camPort))
-    t1 = threading.Thread(target=streamer.start).start()
+    print("port opened")
+    #streamer = subprocess.run("./stream.sh")
 
     try:
         while True:
@@ -50,10 +50,13 @@ def main():
             data = clean(data)
             data = json.loads(data)
             print(data)
-            updateUser(data)
+            if data['test'] == 1:
+                pass
+            else:
+                updateUser(data)
     except KeyboardInterrupt as e:
         sock.close()
-        streamer.stop()
+        #streamer.stop()
         print("Sock closed. Goodbye.")
 
 if __name__ == "__main__":

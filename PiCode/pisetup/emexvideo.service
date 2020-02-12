@@ -1,0 +1,12 @@
+[Service]
+Type=simple
+WorkingDirectory=/home/pi
+ExecStart=/home/pi/emex/saveVideo.sh
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=emexvideo
+User=pi
+
+[Install]
+WantedBy=default.target

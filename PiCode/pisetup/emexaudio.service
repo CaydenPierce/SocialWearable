@@ -1,0 +1,12 @@
+[Service]
+Type=simple
+WorkingDirectory=/home/pi
+ExecStart=/home/pi/emex/saveAudio.sh
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=emexaudio
+User=pi
+Group=pi
+[Install]
+WantedBy=default.target
